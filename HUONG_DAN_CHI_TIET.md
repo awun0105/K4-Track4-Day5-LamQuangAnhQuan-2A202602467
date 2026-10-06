@@ -1,168 +1,161 @@
-# CẨM NANG TOÀN DIỆN: BỘ LỌC KALMAN & HỢP NHẤT XÁC SUẤT ĐA CẢM BIẾN
-## Track 4 · Ngày 5 — Kalman Filter & Probabilistic Fusion Pilot (Lynx-07)
+# HƯỚNG DẪN CHI TIẾT: BỘ LỌC KALMAN VÀ HỢP NHẤT DỮ LIỆU ĐA CẢM BIẾN
+## Bài Thực Hành K4 · Track 4 · Ngày 5 — Kalman Filter & Sensor Fusion (Xe Tự Hành Lynx-07)
 
-> **Tác giả:** Lâm Quang Anh Quân — MSSV: `2A202602467`  
-> **Repository:** `K4-Track4-Day5-LamQuangAnhQuan-2A202602467`  
-> **Mục tiêu học thuật:** Xây dựng từ nguyên lý gốc (First-Principles Thinking) toàn bộ chuỗi thuật toán định vị và hợp nhất cảm biến từ không gian trạng thái 1 chiều đến hệ thống hợp nhất đa cảm biến bất đồng bộ (LiDAR, Radar, GPS, UWB, Camera) và bộ lọc mở rộng phi tuyến (EKF).  
-> **Điểm nhấn đặc biệt:** Mọi công thức toán học đều đi kèm bảng giải phẫu từng thành phần (kích thước ma trận, đơn vị vật lý, ý nghĩa) cùng cách phát biểu / diễn giải trực giác bằng lời nói đời thường.
+> **Người thực hiện:** Lâm Quang Anh Quân — MSSV: `2A202602467`  
+> **Kho mã nguồn (Repo):** `K4-Track4-Day5-LamQuangAnhQuan-2A202602467`  
+> **Mục tiêu bài lab:** Tự tay xây dựng từ đầu bộ lọc Kalman bằng Python và thư viện NumPy. Hiểu bản chất cách kết hợp số liệu từ nhiều cảm biến (GPS, UWB, LiDAR, Radar, Camera) để định vị xe tự hành chính xác, loại bỏ số đo rác (outlier) và chẩn đoán lỗi phần cứng cảm biến khi đang chạy trên đường.
 
 ---
 
 ## MỤC LỤC
-1. [Nguyên Lý Gốc: Tại Sao Cần Bộ Lọc Xác Suất?](#1-nguyên-lý-gốc-tại-sao-cần-bộ-lọc-xác-suất)
-2. [Biểu Diễn Niềm Tin Bằng Phân Phối Gaussian & Hợp Nhất Bayes](#2-biểu-diễn-niềm-tin-bằng-phân-phối-gaussian--hợp-nhất-bayes)
-3. [Bộ Lọc Kalman Tuyến Tính 1 Chiều (Scalar KF)](#3-bộ-lọc-kalman-tuyến-tính-1-chiều-scalar-kf)
-4. [Chỉ Số Giám Sát Sức Khỏe NIS (Normalized Innovation Squared)](#4-chỉ-số-giám-sát-sức-khỏe-nis-normalized-innovation-squared)
-5. [Không Gian Trạng Thái & Bộ Lọc Kalman Dạng Ma Trận (Part 5)](#5-không-gian-trạng-thái--bộ-lọc-kalman-dạng-ma-trận-part-5)
-6. [Hợp Nhất Đa Cảm Biến Bất Đồng Bộ Thời Gian Thực (Part 6)](#6-hợp-nhất-đa-cảm-biến-bất-đồng-bộ-thời-gian-thực-part-6)
-7. [Loại Trừ Dữ Liệu Ngoại Lai Bằng Cổng Kiểm Định Chi-Bình Phương (Part 7)](#7-loại-trừ-dữ-liệu-ngoại-lai-bằng-cổng-kiểm-định-chi-bình-phương-part-7)
-8. [Nhiệm Vụ Chẩn Đoán Cảm Biến Xe Tự Hành Lynx-07 (Part 9)](#8-nhiệm-vụ-chẩn-đoán-cảm-biến-xe-tự-hành-lynx-07-part-9)
-9. [Bonus Nâng Cao: Extended Kalman Filter (EKF - Part 8)](#9-bonus-nâng-cao-extended-kalman-filter-ekf---part-8)
-10. [Playbook Triển Khai Thực Tế Trong Xe Tự Hành & Robot Công Nghiệp](#10-playbook-triển-khai-thực-tế-trong-xe-tự-hành--robot-công-nghiệp)
+1. [Bản Chất Vấn Đề: Tại Sao Phải Dùng Bộ Lọc Xác Suất?](#1-bản-chất-vấn-đề-tại-sao-phải-dùng-bộ-lọc-xác-suất)
+2. [Đo Lường Không Chắc Chắn: Biểu Diễn Bằng Phân Phối Chuẩn (Gaussian)](#2-đo-lường-không-chắc-chắn-biểu-diễn-bằng-phân-phối-chuẩn-gaussian)
+3. [Bộ Lọc Kalman 1 Chiều: Hai Bước Lặp Dự Đoán & Hiệu Chỉnh](#3-bộ-lọc-kalman-1-chiều-hai-bước-lặp-dự-đoán--hiệu-chỉnh)
+4. [Theo Dõi Sức Khỏe Bộ Lọc Bằng Chỉ Số NIS](#4-theo-dõi-sức-khỏe-bộ-lọc-bằng-chỉ-số-nis)
+5. [Bộ Lọc Kalman Dạng Ma Trận Cho Xe Chạy Trên Mặt Phẳng 2D (Part 5)](#5-bộ-lọc-kalman-dạng-ma-trận-cho-xe-chạy-trên-mặt-phẳng-2d-part-5)
+6. [Hợp Nhất Nhiều Cảm Biến Chạy Lệch Tần Số (Part 6)](#6-hợp-nhất-nhiều-cảm-biến-chạy-lệch-tần-số-part-6)
+7. [Lọc Bỏ Điểm Đo Bất Thường Bằng Cổng Chi-Bình Phương (Part 7)](#7-lọc-bỏ-điểm-đo-bất-thường-bằng-cổng-chi-bình-phương-part-7)
+8. [Nhiệm Vụ Thực Tế: Bắt Bệnh Cảm Biến Trên Xe Lynx-07 (Part 9)](#8-nhiệm-vụ-thực-tế-bắt-bệnh-cảm-biến-trên-xe-lynx-07-part-9)
+9. [Mở Rộng Cho Cảm Biến Phi Tuyến: Bộ Lọc EKF (Part 8 Bonus)](#9-mở-rộng-cho-cảm-biến-phi-tuyến-bộ-lọc-ekf-part-8-bonus)
+10. [Kinh Nghiệm Thực Tế Khi Triển Khai Cho Xe Tự Hành & Robot](#10-kinh-nghiệm-thực-tế-khi-triển-khai-cho-xe-tự-hành--robot)
 
 ---
 
-## 1. NGUYÊN LÝ GỐC: TẠI SAO CẦN BỘ LỌC XÁC SUẤT?
+## 1. BẢN CHẤT VẤN ĐỀ: TẠI SAO PHẢI DÙNG BỘ LỌC XÁC SUẤT?
 
-### 1.1 Thách thức của thế giới thực: Nhiễu và Trễ pha
-Trong kỹ thuật điều khiển và xe tự hành, việc đo đạc vị trí từ bất kỳ cảm biến vật lý nào (như GPS, UWB, LiDAR) luôn đi kèm với hai rào cản tự nhiên:
-1. **Nhiễu đo lường ngẫu nhiên (Measurement Noise):** Cảm biến bị ảnh hưởng bởi nhiệt độ, tán xạ sóng, nhiễu điện tử, khúc xạ khí quyển dẫn đến số đo rung lắc liên tục quanh giá trị thực.
-2. **Hiện tượng trễ pha (Phase Lag / Delay) của các bộ lọc cổ điển:**
-   - Phương pháp trực quan nhất để làm mượt dữ liệu là **Trung bình trượt nhân quả (Causal Moving Average)** với cửa sổ $k$:
+### 1.1 Thách thức thực tế: Cảm biến luôn có nhiễu và bộ lọc cổ điển gây trễ
+Khi lập trình xe tự hành hoặc robot, việc đọc dữ liệu từ cảm biến phần cứng (như GPS, UWB, LiDAR) gặp phải hai khó khăn lớn:
+1. **Nhiễu đo lường:** Sóng vô tuyến bị dội tường, thiết bị nóng lên, hay thời tiết xấu làm cho con số cảm biến trả về luôn rung lắc liên tục quanh vị trí thật.
+2. **Cái bẫy trễ pha khi lấy trung bình cộng:**
+   - Cách tự nhiên nhất mà mọi người hay nghĩ đến là **lấy trung bình trượt** (Moving Average) qua $k$ mẫu gần nhất:
 
 $$\bar{z}_t = \frac{1}{k} \sum_{i=0}^{k-1} z_{t-i}$$
 
-#### 🔍 Giải phẫu thành phần công thức:
-| Thành phần | Tên gọi | Kiểu / Kích cỡ | Đơn vị | Ý nghĩa vật lý |
+#### 🔍 Chi tiết từng thành phần trong công thức:
+| Ký hiệu | Tên gọi | Kiểu giá trị | Đơn vị | Ý nghĩa thực tế |
 | :---: | :--- | :---: | :---: | :--- |
-| $\bar{z}_t$ | Giá trị ước lượng trung bình trượt | Vô hướng | $\text{m}$ | Vị trí ước tính sau khi làm mượt tại thời điểm $t$. |
-| $k$ | Kích thước cửa sổ (Window size) | Số nguyên dương | Không thứ nguyên | Số lượng điểm đo trong quá khứ được gom lại để tính trung bình. |
-| $z_{t-i}$ | Phép đo tại thời điểm quá khứ $t-i$ | Vô hướng | $\text{m}$ | Tọa độ cảm biến đo được lùi về trước $i$ bước thời gian. |
-| $\sum_{i=0}^{k-1}$ | Tổng tích lũy | Phép toán | - | Cộng dồn $k$ giá trị đo gần nhất tính từ thời điểm hiện tại. |
+| $\bar{z}_t$ | Vị trí sau khi làm mượt | Số thực | mét ($\text{m}$) | Con số vị trí đã được làm êm tại thời điểm hiện tại $t$. |
+| $k$ | Kích thước cửa sổ | Số nguyên dương | - | Số lượng mẫu đo trong quá khứ được gom lại để chia trung bình. |
+| $z_{t-i}$ | Mẫu đo quá khứ | Số thực | mét ($\text{m}$) | Con số cảm biến đã đo được cách đây $i$ bước thời gian. |
+| $\sum$ | Dấu tổng | Phép toán | - | Cộng dồn $k$ mẫu đo gần nhất lại với nhau. |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Vị trí ước tính tại thời điểm $t$ bằng trung bình cộng số học của $k$ phép đo gần nhất tính từ hiện tại trở về quá khứ."*  
-> **Nghịch lý trực giác:** Nếu chọn $k$ nhỏ, dữ liệu không đủ độ mượt (nhiễu vẫn còn lớn). Nếu chọn $k$ lớn để triệt tiêu nhiễu, bộ lọc sẽ tích lũy một độ trễ thời gian $\Delta t_{\text{lag}} \approx \frac{k-1}{2} \cdot \Delta t_s$. Khi xe tự hành phanh gấp hoặc rẽ ngoặt, giá trị trung bình trượt sẽ "ngủ quên" ở quá khứ, khiến xe tiếp tục nghĩ mình đang đi thẳng và gây tai nạn.
+#### 🗣️ Cách đọc và bản chất vấn đề:
+> **Cách đọc:** *"Vị trí làm mượt ở thời điểm hiện tại bằng tổng của $k$ giá trị đo gần nhất chia đều cho $k$."*  
+> **Hạn chế chết người:** Nếu chọn $k$ nhỏ (ví dụ 3 mẫu), đường đi vẫn rung lắc mạnh. Nếu chọn $k$ lớn (ví dụ 20 mẫu) để đường đi êm ái, xe sẽ bị **trễ thời gian** khoảng $\frac{k-1}{2}$ bước. Khi xe phanh gấp hoặc bẻ lái gấp, bộ lọc trung bình vẫn đang bận "ngủ quên" với các số liệu cũ trong quá khứ, khiến hệ thống tưởng xe vẫn đang chạy thẳng và dẫn tới đâm va.
 
 ```
-[Số đo thô rung lắc] ──> [Moving Average] ──> Giảm nhiễu NHƯNG trễ pha nghiêm trọng!
-[Số đo thô rung lắc] ──> [Kalman Filter]  ──> Giảm nhiễu VÀ không trễ pha (nhờ dự đoán vật lý)!
+[Dữ liệu cảm biến rung lắc] ──> [Trung bình trượt] ──> Êm hơn NHƯNG phản xạ cực kỳ chậm trễ!
+[Dữ liệu cảm biến rung lắc] ──> [Bộ lọc Kalman]   ──> Êm ái VÀ phản xạ tức thì (nhờ dự đoán vật lý)!
 ```
 
-### 1.2 Ý tưởng đột phá của Rudolf Kalman: Mô hình động học kết hợp đo đạc
-Bộ lọc Kalman giải quyết mâu thuẫn trên bằng cách không chỉ nhìn về quá khứ mà còn **dự phóng tương lai** dựa trên quy luật vật lý:
-- Chúng ta có phương trình chuyển động của xe (ví dụ: vận tốc nhân thời gian cho ra quãng đường).
-- Chúng ta có các phép đo mới từ cảm biến kèm theo ước lượng độ tin cậy.
-- Bộ lọc Kalman kết hợp hai nguồn thông tin độc lập này theo tỷ lệ tối ưu toán học (độ lợi Kalman $K$) để giảm phương sai sai số xuống mức thấp nhất có thể.
+### 1.2 Cách giải quyết của Rudolf Kalman: Kết hợp vật lý và đo đạc
+Thay vì chỉ thụ động nhìn lại các số liệu quá khứ, bộ lọc Kalman làm hai việc cùng lúc:
+- **Dùng quy luật chuyển động vật lý để dự đoán trước:** Xe đang ở đâu, chạy vận tốc bao nhiêu thì sau một khoảng thời gian $\Delta t$ nó sẽ di chuyển tới đâu.
+- **Dùng số đo mới của cảm biến để hiệu chỉnh lại:** Khi cảm biến gửi dữ liệu về, bộ lọc so sánh xem thực tế lệch với dự đoán bao nhiêu, từ đó tìm điểm dung hòa tối ưu nhất.
 
 ---
 
-## 2. BIỂU DIỄN NIỀM TIN BẰNG PHÂN PHỐI GAUSSIAN & HỢP NHẤT BAYES
+## 2. ĐO LƯỜNG KHÔNG CHẮC CHẮN: BIỂU DIỄN BẰNG PHÂN PHỐI CHUẨN (GAUSSIAN)
 
-### 2.1 Hàm mật độ xác suất Gaussian (Gaussian Belief)
-Trong lý thuyết ước lượng tối ưu, trạng thái của một đại lượng không được biểu diễn bằng một con số vô hướng cố định mà bằng một biến ngẫu nhiên tuân theo phân phối chuẩn $\mathcal{N}(\mu, \sigma^2)$:
+### 2.1 Biểu diễn vị trí bằng hình chuông xác suất
+Trong bộ lọc Kalman, ta không bao giờ khẳng định *"Xe đang ở chính xác mốc 5.0 mét"*. Thay vào đó, ta nói *"Vị trí xe khả dĩ nhất là 5.0 mét, nhưng có độ chênh lệch sai số khoảng 0.2 mét"*. Ta biểu diễn điều này bằng phân phối chuẩn $\mathcal{N}(\mu, \sigma^2)$:
 
 $$p(x) = \frac{1}{\sqrt{2\pi \sigma^2}} \exp\left(-\frac{(x - \mu)^2}{2\sigma^2}\right)$$
 
-#### 🔍 Giải phẫu thành phần công thức:
-| Thành phần | Tên gọi | Kiểu / Kích cỡ | Đơn vị | Ý nghĩa vật lý |
+#### 🔍 Chi tiết từng thành phần:
+| Ký hiệu | Tên gọi | Kiểu | Đơn vị | Ý nghĩa thực tế |
 | :---: | :--- | :---: | :---: | :--- |
-| $p(x)$ | Mật độ xác suất (Probability density) | Vô hướng $\ge 0$ | $1/\text{m}$ | Mật độ khả năng trạng thái thực của xe nằm tại tọa độ $x$. |
-| $x$ | Tọa độ khảo sát | Vô hướng | $\text{m}$ | Vị trí không gian đang được đánh giá xác suất. |
-| $\mu$ | Kỳ vọng toán học (Mean) | Vô hướng | $\text{m}$ | Điểm trung tâm có mật độ xác suất cao nhất — vị trí khả dĩ nhất của xe. |
-| $\sigma^2$ | Phương sai (Variance) | Vô hướng $> 0$ | $\text{m}^2$ | Thước đo độ bất định (Uncertainty). Càng nhỏ, đỉnh chuông càng nhọn $\Rightarrow$ niềm tin càng chắc chắn. |
-| $\sigma$ | Độ lệch chuẩn (Standard deviation) | Vô hướng $> 0$ | $\text{m}$ | Biên độ phân tán sai số quanh giá trị trung bình ($1\sigma$ ứng với 68.3% độ tin cậy). |
-| $\exp(\dots)$ | Hàm mũ cơ số tự nhiên $e$ | Phép toán | - | Tạo hình dạng đường cong hình chuông đối xứng đặc trưng. |
+| $p(x)$ | Mật độ xác suất | Số thực $\ge 0$ | $1/\text{m}$ | Mức độ tin cậy rằng xe thực sự đang đứng ở tọa độ $x$. |
+| $x$ | Tọa độ đang xét | Số thực | mét ($\text{m}$) | Vị trí bất kỳ trên đường mà ta muốn kiểm tra. |
+| $\mu$ | Giá trị trung bình | Số thực | mét ($\text{m}$) | Điểm đỉnh của hình chuông — vị trí có khả năng đúng cao nhất. |
+| $\sigma^2$ | Phương sai | Số thực dương | $\text{m}^2$ | Thước đo độ bất định (độ nghi ngờ). Càng nhỏ nghĩa là ta càng chắc chắn về vị trí của xe. |
+| $\sigma$ | Độ lệch chuẩn | Số thực dương | mét ($\text{m}$) | Độ rộng sai số. Khoảng $\pm 1\sigma$ bao quát 68% khả năng, còn $\pm 2\sigma$ bao quát khoảng 95% khả năng. |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Hàm mật độ xác suất của tọa độ $x$ tỉ lệ nghịch với căn bậc hai của phương sai nhân hai pi, và tỉ lệ thuận với hàm mũ của âm sai số bình phương chia cho hai lần phương sai."*  
-> **Diễn giải trực giác:** Càng xa giá trị kỳ vọng $\mu$, xác suất xe có mặt ở đó càng suy giảm theo hàm mũ nghịch đảo. Phương sai $\sigma^2$ đóng vai trò là "chiều rộng chiếc ô hoài nghi": ô càng hẹp, ta càng nắm chắc vị trí của xe.
+#### 🗣️ Cách đọc và ý nghĩa trực quan:
+> **Cách đọc:** *"Mật độ xác suất tại vị trí $x$ giảm dần theo hàm mũ của khoảng cách từ $x$ tới tâm $\mu$, chia cho hai lần phương sai."*  
+> **Hình dung đời thường:** $\mu$ là điểm ta nhắm tới, còn $\sigma$ là độ rộng của vòng ngắm. Vòng ngắm càng hẹp thì tay súng càng tự tin và bắn càng chuẩn.
 
 ---
 
-### 2.2 Công thức hợp nhất hai nguồn thông tin Gaussian độc lập
-Giả sử ta có hai cảm biến độc lập cùng đo một vị trí $x$:
-- Cảm biến 1 cho phân phối $\mathcal{N}(\mu_1, \sigma_1^2)$.
-- Cảm biến 2 cho phân phối $\mathcal{N}(\mu_2, \sigma_2^2)$.
+### 2.2 Khi hai cảm biến cùng đo một vị trí thì gộp lại thế nào?
+Giả sử trên xe có hai cảm biến độc lập cùng đo vị trí $x$:
+- Cảm biến 1 báo: vị trí $\mu_1$, độ sai số phương sai $\sigma_1^2$.
+- Cảm biến 2 báo: vị trí $\mu_2$, độ sai số phương sai $\sigma_2^2$.
 
-Theo định lý Bayes, hàm mật độ xác suất hậu nghiệm tỉ lệ thuận với tích của hai hàm mật độ xác suất độc lập:
+Theo quy tắc xác suất Bayes, khi gộp hai nguồn thông tin độc lập này lại, ta nhân hai đường cong hình chuông với nhau. Kết quả thu được **vẫn là một hình chuông chuẩn mới** với tâm $\mu$ và phương sai $\sigma^2$:
 
-$$p(x \mid z_1, z_2) \propto p(z_1 \mid x) \cdot p(z_2 \mid x)$$
+$$\sigma^2 = \frac{\sigma_1^2 \cdot \sigma_2^2}{\sigma_1^2 + \sigma_2^2} = \frac{1}{\frac{1}{\sigma_1^2} + \frac{1}{\sigma_2^2}}$$
 
-Khi nhân hai đường cong chuông Gaussian, kết quả thu được **luôn là một đường cong chuông Gaussian mới** $\mathcal{N}(\mu, \sigma^2)$ với công thức hợp nhất:
+$$\mu = \mu_1 + \frac{\sigma_1^2}{\sigma_1^2 + \sigma_2^2} (\mu_2 - \mu_1)$$
 
-$$\sigma^2 = \frac{1}{\frac{1}{\sigma_1^2} + \frac{1}{\sigma_2^2}} = \frac{\sigma_1^2 \sigma_2^2}{\sigma_1^2 + \sigma_2^2}$$
-
-$$\mu = \sigma^2 \left(\frac{\mu_1}{\sigma_1^2} + \frac{\mu_2}{\sigma_2^2}\right) = \mu_1 + \frac{\sigma_1^2}{\sigma_1^2 + \sigma_2^2} (\mu_2 - \mu_1)$$
-
-#### 🔍 Giải phẫu thành phần công thức hợp nhất:
-| Thành phần | Tên gọi | Kiểu / Kích cỡ | Đơn vị | Ý nghĩa vật lý |
+#### 🔍 Chi tiết từng thành phần:
+| Ký hiệu | Tên gọi | Kiểu | Đơn vị | Ý nghĩa thực tế |
 | :---: | :--- | :---: | :---: | :--- |
-| $\sigma^2$ | Phương sai hợp nhất (Fused Variance) | Vô hướng | $\text{m}^2$ | Độ bất định của trạng thái sau khi đã gộp bằng chứng từ cả hai cảm biến. |
-| $\frac{1}{\sigma^2}$ | Độ chính xác (Precision / Information) | Vô hướng | $1/\text{m}^2$ | Lượng thông tin tri thức. Độ chính xác hợp nhất bằng **tổng độ chính xác** của từng cảm biến. |
-| $\mu_1, \mu_2$ | Số đo trung bình của cảm biến 1 và 2 | Vô hướng | $\text{m}$ | Vị trí mà cảm biến 1 và cảm biến 2 báo cáo. |
-| $\sigma_1^2, \sigma_2^2$ | Phương sai sai số của cảm biến 1 và 2 | Vô hướng | $\text{m}^2$ | Mức độ nhiễu hay độ bất định cố hữu của từng cảm biến. |
-| $\frac{\sigma_1^2}{\sigma_1^2 + \sigma_2^2}$ | Trọng số điều chỉnh (Kalman Gain 1D) | Vô hướng $[0, 1]$ | Không thứ nguyên | Tỉ lệ nhường bước: cảm biến 1 nhường bao nhiêu phần đường về phía cảm biến 2. |
-| $\mu_2 - \mu_1$ | Độ lệch đo lường (Measurement Discrepancy) | Vô hướng | $\text{m}$ | Khoảng cách bất đồng giữa hai cảm biến. |
+| $\sigma^2$ | Phương sai gộp | Số thực | $\text{m}^2$ | Mức độ bất định sau khi đã lắng nghe cả 2 cảm biến. |
+| $\frac{1}{\sigma^2}$ | Độ chính xác (Precision) | Số thực | $1/\text{m}^2$ | Thước đo lượng thông tin. Độ chính xác sau khi gộp bằng **tổng độ chính xác** của từng cảm biến. |
+| $\mu$ | Vị trí chốt cuối cùng | Số thực | mét ($\text{m}$) | Vị trí dung hòa hợp lý nhất giữa hai cảm biến. |
+| $\frac{\sigma_1^2}{\sigma_1^2 + \sigma_2^2}$ | Tỷ lệ nhường bước | Khoảng $[0, 1]$ | Không thứ nguyên | Trọng số quyết định: cảm biến 1 sẽ nhường bao nhiêu bước về phía cảm biến 2. |
+| $\mu_2 - \mu_1$ | Độ lệch giữa hai cảm biến | Số thực | mét ($\text{m}$) | Khoảng cách vênh nhau giữa hai số đo. |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc phương sai:** *"Nghịch đảo phương sai hợp nhất bằng tổng các nghịch đảo phương sai thành phần."*  
-> **Cách đọc kỳ vọng:** *"Vị trí hợp nhất bằng trung bình có trọng số của hai vị trí, trong đó trọng số tỉ lệ thuận với độ tin cậy (nghịch đảo phương sai) của mỗi cảm biến."*  
-> **Định luật vàng:** $\sigma^2 < \min(\sigma_1^2, \sigma_2^2)$ — **Phương sai sau hợp nhất luôn nhỏ hơn phương sai của cảm biến tốt nhất**. Việc tiếp nhận thêm thông tin độc lập không bao giờ làm ta hoài nghi hơn, mà luôn làm tăng độ tin cậy!
+#### 🗣️ Cách phát biểu và nguyên lý cốt lõi:
+> **Cách đọc:** *"Vị trí kết hợp bằng vị trí cảm biến 1 cộng thêm một phần độ lệch giữa hai cảm biến, trong đó phần điều chỉnh này phụ thuộc vào tỷ lệ phương sai của cảm biến 1 trên tổng phương sai cả hai."*  
+> **Quy tắc vàng:** $\sigma^2 < \min(\sigma_1^2, \sigma_2^2)$ — **Phương sai sau khi kết hợp luôn luôn nhỏ hơn phương sai của cảm biến xịn nhất**. Nói một cách dễ hiểu: Lắng nghe thêm một nguồn tin độc lập (dù cảm biến đó có hơi nhiễu) luôn làm ta chắc chắn hơn là chỉ nghe một bên đơn độc!
 
 ---
 
-## 3. BỘ LỌC KALMAN TUYẾN TÍNH 1 CHIỀU (SCALAR KF)
+## 3. BỘ LỌC KALMAN 1 CHIỀU: HAI BƯỚC LẶP DỰ ĐOÁN & HIỆU CHỈNH
 
-Bộ lọc Kalman 1 chiều là trường hợp đặc biệt mà ở đó phép cập nhật Bayes được lặp đi lặp lại xen kẽ với bước ngoại suy thời gian.
+Một chu kỳ hoạt động của bộ lọc Kalman lặp đi lặp lại đúng 2 giai đoạn:
+1. **Dự đoán (Predict):** Dùng quán tính vật lý đẩy trạng thái tới thời điểm hiện tại.
+2. **Cập nhật (Update):** Khi có số đo mới từ cảm biến gửi về, điều chỉnh lại vị trí.
 
 ```
-                  ┌────────────────────────────────────────┐
-                  │          Trạng thái ban đầu            │
-                  │              (x₀, P₀)                  │
-                  └──────────────────┬─────────────────────┘
-                                     │
-            ┌────────────────────────▼────────────────────────┐
-            │               1. DỰ ĐOÁN (PREDICT)              │
-            │          x⁻ = x̂                                 │
-            │          P⁻ = P + Q  (Độ bất định tăng lên)     │
-            └────────────────────────┬────────────────────────┘
-                                     │
-                                     │ [Có phép đo mới z từ cảm biến]
-                                     ▼
-            ┌─────────────────────────────────────────────────┐
-            │              2. CẬP NHẬT (UPDATE)               │
-            │  Độ mới (Innovation):    y = z - x⁻             │
-            │  Phương sai độ mới:      S = P⁻ + R             │
-            │  Độ lợi Kalman:          K = P⁻ / S             │
-            │  Cập nhật trạng thái:    x̂ = x⁻ + K·y           │
-            │  Cập nhật phương sai:    P = (1 - K)·P⁻         │
-            └────────────────────────┬────────────────────────┘
-                                     │
-                                     └─────> Lặp lại chu kỳ kế tiếp
+                      ┌────────────────────────────────────────┐
+                      │           Trạng thái ban đầu           │
+                      │               (x₀, P₀)                 │
+                      └──────────────────┬─────────────────────┘
+                                         │
+                ┌────────────────────────▼────────────────────────┐
+                │             1. BƯỚC DỰ ĐOÁN (PREDICT)           │
+                │    Vị trí dự tính:    x⁻ = x̂                    │
+                │    Độ nghi ngờ tăng:  P⁻ = P + Q                │
+                └────────────────────────┬────────────────────────┘
+                                         │
+                                         │ [Nhận được số đo z từ cảm biến]
+                                         ▼
+                ┌─────────────────────────────────────────────────┐
+                │             2. BƯỚC CẬP NHẬT (UPDATE)           │
+                │    Độ lệch thực tế:   y = z - x⁻                │
+                │    Độ nghi ngờ gộp:   S = P⁻ + R                │
+                │    Trọng số Kalman:   K = P⁻ / S                │
+                │    Chốt vị trí mới:   x̂ = x⁻ + K·y              │
+                │    Co hẹp độ nghi ngờ: P = (1 - K)·P⁻           │
+                └────────────────────────┬────────────────────────┘
+                                         │
+                                         └─────> Quay lại bước 1 cho chu kỳ kế tiếp
 ```
 
-### 3.1 Nhóm công thức Dự đoán (Predict Phase)
+### 3.1 Giai đoạn 1: Dự đoán (Predict Phase)
 
 $$\hat{x}^- = \hat{x}_{k-1}$$
 
 $$P^- = P_{k-1} + Q$$
 
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Tên gọi | Kiểu | Đơn vị | Ý nghĩa vật lý |
-| :---: | :--- | :---: | :---: | :--- |
-| $\hat{x}^-$ | Ước lượng tiên nghiệm (A priori state) | Vô hướng | $\text{m}$ | Dự đoán vị trí ở thời điểm hiện tại trước khi nhìn thấy số đo cảm biến. |
-| $\hat{x}_{k-1}$ | Ước lượng hậu nghiệm bước trước | Vô hướng | $\text{m}$ | Vị trí tốt nhất đã chốt ở bước thời gian trước. |
-| $P^-$ | Phương sai tiên nghiệm | Vô hướng | $\text{m}^2$ | Độ bất định của dự đoán trước khi cập nhật cảm biến. |
-| $P_{k-1}$ | Phương sai bước trước | Vô hướng | $\text{m}^2$ | Độ bất định đã biết ở bước trước. |
-| $Q$ | Phương sai nhiễu quá trình (Process Noise) | Vô hướng | $\text{m}^2$ | Mức độ hỗn loạn của môi trường (gió, mặt đường, trượt bánh) làm ta mất dần niềm tin theo thời gian. |
+#### 🔍 Chi tiết từng biến số:
+| Ký hiệu | Tên gọi | Đơn vị | Ý nghĩa thực tế |
+| :---: | :--- | :---: | :--- |
+| $\hat{x}^-$ | Vị trí dự tính trước | mét ($\text{m}$) | Vị trí ta đoán xe đang đứng trước khi đọc số đo cảm biến. |
+| $\hat{x}_{k-1}$ | Vị trí đã chốt ở bước trước | mét ($\text{m}$) | Vị trí tin cậy nhất ở chu kỳ liền trước. |
+| $P^-$ | Độ bất định dự tính | $\text{m}^2$ | Mức độ nghi ngờ về vị trí dự đoán vừa tính ra. |
+| $P_{k-1}$ | Độ bất định ở bước trước | $\text{m}^2$ | Mức độ nghi ngờ đã biết ở bước trước. |
+| $Q$ | Nhiễu quá trình (Process Noise) | $\text{m}^2$ | Mức độ biến động ngẫu nhiên của môi trường (gió tạt, trơn trượt bánh, đường mấp mô). |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Phát biểu:** *"Khi thời gian trôi đi mà chưa có phép đo mới, vị trí được bảo toàn theo quán tính, còn độ bất định $P^-$ bắt buộc phải tăng thêm một lượng $Q$ vì thế giới luôn biến động ngẫu nhiên."*
+#### 🗣️ Phát biểu bằng lời:
+> *"Khi thời gian trôi đi mà chưa có số đo mới, ta tạm giữ nguyên vị trí theo quán tính, nhưng độ nghi ngờ $P^-$ bắt buộc phải cộng thêm một lượng $Q$, vì thế giới bên ngoài luôn có những tác động ngẫu nhiên làm ta bớt chắc chắn đi."*
 
 ---
 
-### 3.2 Nhóm công thức Cập nhật (Update Phase)
+### 3.2 Giai đoạn 2: Cập nhật theo số đo cảm biến (Update Phase)
 
 $$y = z - \hat{x}^-$$
 
@@ -174,245 +167,248 @@ $$\hat{x} = \hat{x}^- + K \cdot y$$
 
 $$P = (1 - K) \cdot P^-$$
 
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Tên gọi | Kiểu | Đơn vị | Ý nghĩa vật lý |
-| :---: | :--- | :---: | :---: | :--- |
-| $z$ | Phép đo thực tế (Measurement) | Vô hướng | $\text{m}$ | Con số thực tế mà phần cứng cảm biến bắn về. |
-| $y$ | Độ mới / Phần dư (Innovation / Residual) | Vô hướng | $\text{m}$ | Khoảng cách bất ngờ: Cảm biến đo được khác bao nhiêu so với điều ta dự đoán. |
-| $R$ | Phương sai nhiễu đo lường (Sensor Noise) | Vô hướng | $\text{m}^2$ | Độ nhiễu cố hữu của cảm biến theo bảng thông số kỹ thuật (Datasheet). |
-| $S$ | Phương sai của độ mới (Innovation Variance) | Vô hướng | $\text{m}^2$ | Tổng độ bất định gộp của cả dự đoán ($P^-$) lẫn cảm biến ($R$). |
-| $K$ | Độ lợi Kalman (Kalman Gain) | Vô hướng $[0, 1]$ | Không thứ nguyên | Trọng số quyết định mức độ tin vào cảm biến so với mô hình dự đoán. |
-| $\hat{x}$ | Ước lượng hậu nghiệm (A posteriori state) | Vô hướng | $\text{m}$ | Kết quả vị trí cuối cùng được chốt lại sau khi dung hòa dự đoán và số đo. |
-| $P$ | Phương sai hậu nghiệm | Vô hướng | $\text{m}^2$ | Độ bất định đã được co lại sau khi hấp thụ thông tin từ cảm biến. |
+#### 🔍 Chi tiết từng biến số:
+| Ký hiệu | Tên gọi | Đơn vị | Ý nghĩa thực tế |
+| :---: | :--- | :---: | :--- |
+| $z$ | Số đo thực tế | mét ($\text{m}$) | Giá trị thực tế mà cảm biến vừa đo được và gửi về vi điều khiển. |
+| $y$ | Độ lệch đo lường (Residual) | mét ($\text{m}$) | Cảm biến đo được lệch bao nhiêu so với vị trí ta vừa dự đoán trước đó. |
+| $R$ | Nhiễu cảm biến | $\text{m}^2$ | Sai số cố hữu của cảm biến phần cứng (ghi trên thông số kỹ thuật của nhà sản xuất). |
+| $S$ | Tổng độ bất định gộp | $\text{m}^2$ | Tổng cộng cả độ nghi ngờ của dự đoán ($P^-$) lẫn độ nhiễu của cảm biến ($R$). |
+| $K$ | Trọng số Kalman (Kalman Gain) | Không thứ nguyên ($0 \le K \le 1$) | Tỷ lệ chia phần: ta tin vào cảm biến bao nhiêu phần, tin vào dự đoán bao nhiêu phần. |
+| $\hat{x}$ | Vị trí chốt cuối cùng | mét ($\text{m}$) | Vị trí chính xác nhất sau khi đã kết hợp cả dự đoán và cảm biến. |
+| $P$ | Độ bất định chốt cuối | $\text{m}^2$ | Mức độ nghi ngờ mới, luôn nhỏ hơn mức ban đầu nhờ có thêm số đo cảm biến. |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Độ mới $y$:** *"Độ mới bằng số đo cảm biến trừ đi dự đoán tiên nghiệm. Nó phản ánh phần thông tin mới tinh khôi mà mô hình chưa lường trước được."*  
-> **Độ lợi Kalman $K$:** *"Độ lợi Kalman là tỷ số giữa độ bất định của dự đoán trên tổng độ bất định toàn hệ thống. Nếu cảm biến cực chuẩn ($R \to 0$), $K \to 1$ (tin 100% vào cảm biến). Nếu cảm biến quá nhiễu ($R \gg P^-$), $K \to 0$ (bỏ qua cảm biến, giữ nguyên dự đoán)."*  
-> **Cập nhật trạng thái $\hat{x}$:** *"Ước lượng mới bằng dự đoán cũ cộng thêm một phần của độ mới, được điều tiết thông qua độ lợi Kalman."*  
-> **Cập nhật phương sai $P$:** *"Phương sai mới bằng phương sai tiên nghiệm nhân với thừa số $(1 - K)$, chứng minh rằng độ bất định luôn luôn giảm đi sau mỗi lần cập nhật."*
-
----
-
-## 4. CHỈ SỐ GIÁM SÁT SỨC KHỎE NIS (NORMALIZED INNOVATION SQUARED)
-
-### 4.1 Định nghĩa toán học & Giải phẫu thành phần
-Để giám sát xem bộ lọc Kalman có đang hoạt động chuẩn xác hay bị hỏng hóc trong thực tế mà **không có tọa độ thực (Ground Truth)**, ta dùng chỉ số **NIS**:
-
-$$\text{NIS} = \mathbf{y}^T \mathbf{S}^{-1} \mathbf{y}$$
-
-Trong không gian 1 chiều:
-$$\text{NIS} = \frac{y^2}{S} = \frac{(z - \hat{x}^-)^2}{P^- + R}$$
-
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Tên gọi | Kiểu / Kích cỡ | Đơn vị | Ý nghĩa vật lý |
-| :---: | :--- | :---: | :---: | :--- |
-| $\text{NIS}$ | Khoảng cách độ mới chuẩn hóa bình phương | Vô hướng $\ge 0$ | Không thứ nguyên | Thước đo thống kê chuẩn hóa mức độ sai lệch giữa cảm biến và dự đoán. |
-| $\mathbf{y}$ | Vector phần dư độ mới (Innovation vector) | Vector $k \times 1$ | $\text{m}$ | Độ lệch giữa phép đo thực tế và dự đoán của cảm biến. |
-| $\mathbf{y}^T$ | Chuyển vị của vector độ mới | Vector hàng $1 \times k$ | $\text{m}$ | Dùng để thực hiện phép nhân vô hướng dạng toàn phương. |
-| $\mathbf{S}$ | Ma trận hiệp phương sai độ mới | Ma trận $k \times k$ | $\text{m}^2$ | Thước đo dung sai thống kê mà bộ lọc dự kiến cho phép $\mathbf{y}$ dao động. |
-| $\mathbf{S}^{-1}$ | Ma trận nghịch đảo của $\mathbf{S}$ | Ma trận $k \times k$ | $1/\text{m}^2$ | Ma trận trọng số chuẩn hóa trong không gian metric Mahalanobis. |
-
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"NIS bằng bình phương độ mới chia cho phương sai độ mới (hoặc dạng toàn phương của vector độ mới qua nghịch đảo ma trận hiệp phương sai độ mới)."*  
-> **Diễn giải trực giác:** NIS trả lời câu hỏi: *"Khoảng lệch $y$ này có bình thường không so với dung sai dự kiến $S$?"*. Nếu $y = 3\text{m}$ nhưng cảm biến vốn dĩ có dung sai $S = 9\text{m}^2$, thì $\text{NIS} = 9/9 = 1.0$ (hoàn toàn bình thường). Nhưng nếu dung sai chỉ là $S = 0.01\text{m}^2$ mà lệch $3\text{m}$, thì $\text{NIS} = 900$ (báo động đỏ: cảm biến hoặc mô hình đã hỏng!).
+#### 🗣️ Phát biểu bằng lời và trực giác đời thường:
+> - **Độ lệch $y$:** *"Lấy số đo cảm biến trừ đi số dự đoán để biết thực tế có điều gì bất ngờ xảy ra."*  
+> - **Trọng số Kalman $K$:** *"Là tỷ số giữa độ nghi ngờ của dự đoán trên tổng độ nghi ngờ của cả hệ thống.  
+>   + Nếu cảm biến cực kỳ xịn ($R \to 0$), $K \to 1$: ta tin 100% vào cảm biến và kéo thẳng vị trí về số đo cảm biến.  
+>   + Nếu cảm biến quá lởm khởm, rung lắc mạnh ($R$ rất lớn), $K \to 0$: ta hầu như bỏ qua cảm biến và tin vào mô hình tính toán."*  
+> - **Chốt vị trí $\hat{x}$:** *"Lấy vị trí dự đoán cộng thêm một phần độ lệch theo tỷ lệ $K$."*  
+> - **Co hẹp phương sai $P$:** *"Nhân phương sai cũ với $(1 - K)$, chứng minh độ nghi ngờ luôn được thu hẹp lại sau mỗi lần có cảm biến hỗ trợ."*
 
 ---
 
-### 4.2 Tính chất phân phối Chi-bình phương & Kỳ vọng lý thuyết
+## 4. THEO DÕI SỨC KHỎE BỘ LỌC BẰNG CHỈ SỐ NIS
+
+### 4.1 Chỉ số NIS là gì và dùng để làm gì?
+Khi xe chạy ngoài phố, ta **không hề có tọa độ chuẩn (Ground Truth)** để biết xe đang chạy đúng hay sai. Làm sao để máy tính tự phát hiện cảm biến đang bị lỏng dây, chập mạch, hoặc mô hình tính toán đang bị sai?
+
+Người ta dùng thước đo **NIS (Normalized Innovation Squared)**:
+
+$$\text{NIS} = \mathbf{y}^T \mathbf{S}^{-1} \mathbf{y} \quad \left(\text{ở hệ 1 chiều: } \text{NIS} = \frac{y^2}{S} = \frac{(z - \hat{x}^-)^2}{P^- + R}\right)$$
+
+#### 🔍 Chi tiết từng thành phần:
+| Ký hiệu | Tên gọi | Kiểu | Đơn vị | Ý nghĩa thực tế |
+| :---: | :--- | :---: | :---: | :--- |
+| $\text{NIS}$ | Độ lệch chuẩn hóa bình phương | Số thực $\ge 0$ | Không thứ nguyên | Thước đo đánh giá xem độ lệch thực tế có vượt quá mức dung sai cho phép hay không. |
+| $y$ | Độ lệch đo lường | Số thực | mét ($\text{m}$) | Khoảng chênh lệch giữa số đo cảm biến và dự đoán. |
+| $S$ | Dung sai cho phép | Số thực | $\text{m}^2$ | Tổng sai số mà hệ thống dự kiến chấp nhận được. |
+
+#### 🗣️ Cách phát biểu và ý nghĩa trực giác:
+> **Ý nghĩa thực tế:** NIS trả lời câu hỏi: *"Độ lệch $y$ này có bình thường không so với mức rung lắc dự kiến $S$?"*.  
+> - Ví dụ: Cảm biến lệch $y = 3\text{m}$. Nếu đây là cảm biến GPS giá rẻ có sai số $S = 9\text{m}^2$, thì $\text{NIS} = 3^2 / 9 = 1.0 \Rightarrow$ Hoàn toàn bình thường, không có gì lạ.  
+> - Nhưng nếu đây là cảm biến UWB độ chính xác cao vốn chỉ được phép rung lắc $S = 0.01\text{m}^2$ mà lại lệch tới $3\text{m}$, thì $\text{NIS} = 3^2 / 0.01 = 900 \Rightarrow$ Báo động khẩn cấp: cảm biến hoặc đường truyền đang gặp sự cố nghiêm trọng!
+
+---
+
+### 4.2 Con số kỳ vọng chuẩn trong thực tế
+Về mặt toán học xác suất, NIS tuân theo phân phối Chi-bình phương với số bậc tự do bằng số chiều đo đạc $k$:
 
 $$\text{NIS} \sim \chi^2_k \implies \mathbb{E}[\text{NIS}] = k$$
 
-- Với cảm biến vị trí 2D ($x, y$), số chiều đo $k = 2$:
-  - Phân phối lý thuyết: $\text{NIS} \sim \chi^2_2$.
-  - **Kỳ vọng vàng:** $\mathbb{E}[\text{NIS}] = 2.0$.
-  - Khi lấy trung bình trên hàng trăm bước đo, một bộ lọc khỏe mạnh luôn có **Pooled Mean NIS xấp xỉ 2.0** (luôn nhỏ hơn ngưỡng kiểm định $8.0$).
+- Với cảm biến đo mặt phẳng 2D (tọa độ $x$ và $y$), số chiều $k = 2$.
+- **Kỳ vọng chuẩn của một bộ lọc khỏe mạnh:** $\text{mean}(\text{NIS}) \approx 2.0$.
+- Trong bài lab, ngưỡng an toàn được quy định là **$\text{mean}(\text{NIS}) < 8.0$**. Nếu vượt qua ngưỡng này, hệ thống bị coi là bất thường.
 
 ---
 
-## 5. KHÔNG GIAN TRẠNG THÁI & BỘ LỌC KALMAN DẠNG MA TRẬN (PART 5)
+## 5. BỘ LỌC KALMAN DẠNG MA TRẬN CHO XE CHẠY TRÊN MẶT PHẲNG 2D (PART 5)
 
 ### 5.1 Vector trạng thái và Mô hình động học 2D
-Để bám vết một xe tự hành di chuyển trên mặt phẳng 2D, vector trạng thái cần gom cả vị trí và vận tốc:
+Khi xe chạy trên mặt phẳng, ta cần theo dõi 4 đại lượng cùng lúc gồm 2 tọa độ vị trí và 2 thành phần vận tốc:
 
 $$\mathbf{x} = \begin{bmatrix} x \\ y \\ v_x \\ v_y \end{bmatrix} \in \mathbb{R}^4$$
 
-Mô hình chuyển động vận tốc không đổi (Constant Velocity - CV) trong chu kỳ lấy mẫu $\Delta t$:
+Giả sử trong khoảng thời gian lấy mẫu rất ngắn $\Delta t$, xe chạy gần như thẳng đều:
 
 $$\mathbf{x}_k = \mathbf{F}(\Delta t) \mathbf{x}_{k-1} + \mathbf{w}_{k-1}$$
 
 $$\mathbf{F}(\Delta t) = \begin{bmatrix} 1 & 0 & \Delta t & 0 \\ 0 & 1 & 0 & \Delta t \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
 
-#### 🔍 Giải phẫu ma trận chuyển trạng thái $\mathbf{F}(\Delta t)$ (Exercise 5.1):
-| Vị trí hàng, cột | Giá trị | Ý nghĩa vật lý |
-| :---: | :---: | :--- |
-| $\mathbf{F}[0, 0] = 1$ | 1 | Vị trí $x$ mới thừa kế 100% vị trí $x$ cũ. |
-| $\mathbf{F}[0, 2] = \Delta t$ | $\Delta t$ | Vị trí $x$ dịch chuyển một đoạn bằng vận tốc $v_x \times \Delta t$. |
-| $\mathbf{F}[1, 1] = 1$ | 1 | Vị trí $y$ mới thừa kế 100% vị trí $y$ cũ. |
-| $\mathbf{F}[1, 3] = \Delta t$ | $\Delta t$ | Vị trí $y$ dịch chuyển một đoạn bằng vận tốc $v_y \times \Delta t$. |
-| $\mathbf{F}[2, 2] = 1$ | 1 | Giả định vận tốc $v_x$ không đổi qua khoảng thời gian $\Delta t$. |
-| $\mathbf{F}[3, 3] = 1$ | 1 | Giả định vận tốc $v_y$ không đổi qua khoảng thời gian $\Delta t$. |
+#### 🔍 Chi tiết các vị trí trong ma trận chuyển trạng thái $\mathbf{F}(\Delta t)$ (Exercise 5.1):
+- Hàng 0: $x_{mới} = 1 \cdot x + \Delta t \cdot v_x$ (vị trí bằng vị trí cũ cộng vận tốc nhân thời gian).
+- Hàng 1: $y_{mới} = 1 \cdot y + \Delta t \cdot v_y$.
+- Hàng 2: $v_{x, mới} = 1 \cdot v_x$ (giả định vận tốc được giữ nguyên theo quán tính).
+- Hàng 3: $v_{y, mới} = 1 \cdot v_y$.
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Ma trận chuyển trạng thái $\mathbf{F}$ là ma trận đơn vị $4\times 4$ với hai phần tử ngoài đường chéo tại vị trí $(0,2)$ và $(1,3)$ được điền bằng khoảng thời gian $\Delta t$."*  
-> **Diễn giải trực giác:** Phép nhân $\mathbf{F}\mathbf{x}$ chính là dạng đại số tuyến tính cô đọng của hệ phương trình chuyển động thẳng đều Newton: $x_{mới} = x_{cũ} + v_x \Delta t$ và $v_{mới} = v_{cũ}$.
-
----
-
-### 5.2 Mô hình đo lường & Ma trận quan sát $\mathbf{H}$ (Exercise 5.1)
-
-$$\mathbf{z} = \mathbf{H} \mathbf{x} + \mathbf{v}, \quad \mathbf{H} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix} \in \mathbb{R}^{2 \times 4}$$
-
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Kích thước | Đơn vị | Ý nghĩa vật lý |
-| :---: | :---: | :---: | :--- |
-| $\mathbf{z} = [z_x, z_y]^T$ | Vector $2 \times 1$ | $\text{m}$ | Tọa độ vị trí thực tế thu được từ thiết bị đo (GPS hoặc UWB). |
-| $\mathbf{H}$ | Ma trận $2 \times 4$ | Không thứ nguyên | Ma trận chiếu: trích xuất 2 phần tử vị trí $[x, y]$ và che giấu 2 phần tử vận tốc $[v_x, v_y]$. |
-| $\mathbf{v}$ | Vector $2 \times 1$ | $\text{m}$ | Nhiễu đo lường ngẫu nhiên của cảm biến với hiệp phương sai $\mathbf{R} \in \mathbb{R}^{2 \times 2}$. |
-
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Ma trận quan sát $\mathbf{H}$ kích thước $2 \times 4$ gồm một khối ma trận đơn vị $2 \times 2$ ở bên trái và một khối ma trận không $2 \times 2$ ở bên phải."*  
-> **Diễn giải trực giác:** Phép nhân $\mathbf{H}\mathbf{x}$ biến vector trạng thái 4 chiều $[x, y, v_x, v_y]^T$ thành vector 2 chiều $[x, y]^T$, tương ứng với khả năng phần cứng chỉ đo được tọa độ mà không đo được vận tốc.
+```python
+def make_F(dt):
+    F = np.eye(4)
+    F[0, 2] = dt
+    F[1, 3] = dt
+    return F
+```
 
 ---
 
-### 5.3 Ma trận hiệp phương sai nhiễu quá trình $\mathbf{Q}(\Delta t, q)$
-Khi xe tăng tốc hoặc phanh ngẫu nhiên với mật độ phổ công suất gia tốc $q$ (đơn vị $(\text{m}/\text{s}^2)^2/\text{Hz}$):
+### 5.2 Ma trận quan sát $\mathbf{H}$ (Exercise 5.1)
+Cảm biến định vị như GPS hoặc UWB chỉ đo được tọa độ $[x, y]$, không đo được trực tiếp vận tốc:
 
-$$\mathbf{Q}(\Delta t, q) = \begin{bmatrix} \mathbf{Q}_{\text{block}} & \mathbf{0} \\ \mathbf{0} & \mathbf{Q}_{\text{block}} \end{bmatrix}_{\text{theo } (x, v_x) \text{ và } (y, v_y)}$$
+$$\mathbf{z} = \begin{bmatrix} z_x \\ z_y \end{bmatrix} = \mathbf{H} \mathbf{x} + \mathbf{v}, \quad \mathbf{H} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix} \in \mathbb{R}^{2 \times 4}$$
+
+#### 🔍 Chi tiết thành phần:
+- $\mathbf{z}$ ($2\times 1$): Cặp số đo tọa độ thực tế thu về từ cảm biến.
+- $\mathbf{H}$ ($2\times 4$): Ma trận đóng vai trò chiếc "kính lọc", trích lấy 2 phần tử vị trí $[x, y]$ và che đi 2 phần tử vận tốc $[v_x, v_y]$.
+
+```python
+def make_H():
+    H = np.zeros((2, 4))
+    H[0, 0] = 1.0
+    H[1, 1] = 1.0
+    return H
+```
+
+---
+
+### 5.3 Ma trận nhiễu quá trình $\mathbf{Q}(\Delta t, q)$
+Khi xe tăng ga hoặc đạp phanh, gia tốc biến động ngẫu nhiên với cường độ $q$ (đơn vị $(\text{m}/\text{s}^2)^2/\text{Hz}$):
 
 $$\mathbf{Q}_{\text{block}} = q \begin{bmatrix} \frac{\Delta t^3}{3} & \frac{\Delta t^2}{2} \\ \frac{\Delta t^2}{2} & \Delta t \end{bmatrix}$$
 
-#### 🔍 Giải phẫu thành phần:
-- Thành phần vị trí - vị trí: $q \frac{\Delta t^3}{3}$ (tích phân bậc 2 của gia tốc ngẫu nhiên lên vị trí).
-- Thành phần vị trí - vận tốc (hiệp phương sai chéo): $q \frac{\Delta t^2}{2}$.
-- Thành phần vận tốc - vận tốc: $q \Delta t$ (tích phân bậc 1 của gia tốc lên vận tốc).
+Khối ma trận này được xếp trên đường chéo cho từng cặp trục $(x, v_x)$ và $(y, v_y)$.
 
 ---
 
-### 5.4 Chu trình lọc Kalman ma trận đầy đủ (Exercise 5.2)
+### 5.4 Toàn bộ chu trình tính toán ma trận (Exercise 5.2)
 
 #### Pha 1: Dự đoán (Predict)
-$$\mathbf{x}^- = \mathbf{F} \mathbf{x}$$
-$$\mathbf{P}^- = \mathbf{F} \mathbf{P} \mathbf{F}^T + \mathbf{Q}$$
+- Cập nhật vị trí và vận tốc: $\mathbf{x}^- = \mathbf{F} \mathbf{x}$
+- Cập nhật ma trận hiệp phương sai: $\mathbf{P}^- = \mathbf{F} \mathbf{P} \mathbf{F}^T + \mathbf{Q}$
 
 #### Pha 2: Cập nhật (Update)
-$$\mathbf{y} = \mathbf{z} - \mathbf{H} \mathbf{x}^-$$
-$$\mathbf{S} = \mathbf{H} \mathbf{P}^- \mathbf{H}^T + \mathbf{R}$$
-$$\mathbf{K} = \mathbf{P}^- \mathbf{H}^T \mathbf{S}^{-1}$$
-$$\mathbf{x} = \mathbf{x}^- + \mathbf{K} \mathbf{y}$$
-$$\mathbf{P} = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}^-$$
+- Độ lệch đo lường: $\mathbf{y} = \mathbf{z} - \mathbf{H} \mathbf{x}^-$
+- Hiệp phương sai độ lệch: $\mathbf{S} = \mathbf{H} \mathbf{P}^- \mathbf{H}^T + \mathbf{R}$
+- Trọng số Kalman ma trận: $\mathbf{K} = \mathbf{P}^- \mathbf{H}^T \mathbf{S}^{-1}$
+- Chốt trạng thái mới: $\mathbf{x} = \mathbf{x}^- + \mathbf{K} \mathbf{y}$
+- Co hẹp ma trận phương sai: $\mathbf{P} = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}^-$
 
-#### 🔍 Bảng tra cứu kích thước ma trận trong không gian 2D:
-| Ký hiệu | Kích cỡ ma trận | Ý nghĩa đại số |
+#### 🔍 Bảng tra kích thước ma trận trong bài toán 2D:
+| Ký hiệu | Kích cỡ | Ý nghĩa đại số |
 | :---: | :---: | :--- |
-| $\mathbf{x}, \mathbf{x}^-$ | $4 \times 1$ | Vector trạng thái (vị trí 2D, vận tốc 2D). |
-| $\mathbf{P}, \mathbf{P}^-$ | $4 \times 4$ | Ma trận hiệp phương sai sai số ước lượng (đối xứng, xác định dương). |
-| $\mathbf{F}$ | $4 \times 4$ | Ma trận chuyển trạng thái theo mô hình động học. |
-| $\mathbf{Q}$ | $4 \times 4$ | Ma trận hiệp phương sai nhiễu gia tốc ngẫu nhiên. |
-| $\mathbf{z}, \mathbf{y}$ | $2 \times 1$ | Vector phép đo thực tế và vector độ mới. |
-| $\mathbf{H}$ | $2 \times 4$ | Ma trận quan sát chiếu từ không gian trạng thái sang không gian đo. |
-| $\mathbf{R}$ | $2 \times 2$ | Ma trận hiệp phương sai nhiễu cảm biến phần cứng. |
-| $\mathbf{S}$ | $2 \times 2$ | Ma trận hiệp phương sai độ mới trong không gian đo. |
-| $\mathbf{K}$ | $4 \times 2$ | Ma trận độ lợi Kalman (ánh xạ từ phần dư 2 chiều sang điều chỉnh 4 chiều). |
-| $\mathbf{I}$ | $4 \times 4$ | Ma trận đơn vị cùng kích cỡ với trạng thái. |
+| $\mathbf{x}$ | $4 \times 1$ | Vector trạng thái gồm 2 vị trí và 2 vận tốc. |
+| $\mathbf{P}$ | $4 \times 4$ | Ma trận chứa độ bất định và tương quan sai số giữa các biến. |
+| $\mathbf{z}, \mathbf{y}$ | $2 \times 1$ | Vector 2 chiều chứa số đo và độ lệch vị trí. |
+| $\mathbf{R}, \mathbf{S}$ | $2 \times 2$ | Ma trận nhiễu cảm biến và ma trận hiệp phương sai độ lệch. |
+| $\mathbf{K}$ | $4 \times 2$ | Ma trận trọng số Kalman, biến độ lệch vị trí 2 chiều thành lượng điều chỉnh cho cả 4 biến trạng thái. |
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **$\mathbf{P}^- = \mathbf{F} \mathbf{P} \mathbf{F}^T + \mathbf{Q}$:** *"Ma trận hiệp phương sai tiên nghiệm bằng ma trận động học $\mathbf{F}$ nhân hiệp phương sai cũ nhân $\mathbf{F}$ chuyển vị, rồi cộng thêm ma trận nhiễu quá trình $\mathbf{Q}$."*  
-> **$\mathbf{K} = \mathbf{P}^- \mathbf{H}^T \mathbf{S}^{-1}$:** *"Ma trận độ lợi Kalman bằng hiệp phương sai tiên nghiệm nhân $\mathbf{H}$ chuyển vị rồi nhân với nghịch đảo ma trận hiệp phương sai độ mới $\mathbf{S}$."*  
-> **Kỳ diệu của vận tốc:** Dù cảm biến chỉ đo vị trí $(x, y)$, cột độ lợi Kalman tương ứng với hàng vận tốc:
-> $$K_{v_x} = \frac{P_{x, v_x}^-}{S_{xx}} \neq 0$$
-> Nhờ đó, mỗi khi vị trí bị lệch $\Delta x$, bộ lọc **tự động tính ra vận tốc $v_x$ chính xác** mà không cần cảm biến đo tốc độ!
+#### 💡 Bí mật thú vị: Vận tốc tự động hiện ra từ đâu khi cảm biến chỉ đo vị trí?
+Dù cảm biến chỉ đo tọa độ $(x, y)$, cột trọng số Kalman ở hàng vận tốc không hề bằng 0:
+$$K_{v_x} = \frac{P_{x, v_x}^-}{S_{xx}} \neq 0$$
+Nhờ sự tương quan chéo giữa vị trí và vận tốc được tích lũy trong ma trận $\mathbf{P}$, mỗi khi thấy vị trí bị lệch đi một đoạn $\Delta x$, bộ lọc **tự động tính ra luôn vận tốc của xe** mà không cần cảm biến đo tốc độ riêng biệt!
 
 ---
 
-## 6. HỢP NHẤT ĐA CẢM BIẾN BẤT ĐỒNG BỘ THỜI GIAN THỰC (PART 6)
+## 6. HỢP NHẤT NHIỀU CẢM BIẾN CHẠY LỆCH TẦN SỐ (PART 6)
 
-### 6.1 Cơ chế vòng lặp sự kiện bất đồng bộ (Asynchronous Event-Driven Loop)
-Trên xe tự hành thực tế, các cảm biến gửi dữ liệu về bộ xử lý với chu kỳ và độ trễ khác nhau:
-- **LiDAR:** $10\,\text{Hz}$ ($\Delta t = 0.1\,\text{s}$).
-- **Radar:** $20\,\text{Hz}$ ($\Delta t = 0.05\,\text{s}$).
-- **GPS:** $5\,\text{Hz}$ ($\Delta t = 0.2\,\text{s}$).
+### 6.1 Vấn đề lệch pha thời gian trong xe tự hành thực tế
+Trong xe tự hành, các cảm biến hoạt động hoàn toàn độc lập với chu kỳ lấy mẫu khác nhau:
+- **Radar:** $20\,\text{Hz}$ (cứ $0.05\,\text{s}$ gửi 1 lần).
+- **LiDAR:** $10\,\text{Hz}$ (cứ $0.1\,\text{s}$ gửi 1 lần).
+- **GPS:** $5\,\text{Hz}$ (cứ $0.2\,\text{s}$ gửi 1 lần).
 
-#### Thuật toán điều phối (Exercise 6.1):
+### 6.2 Thuật toán vòng lặp sự kiện bất đồng bộ (Exercise 6.1)
+Thay vì chờ đợi các cảm biến cùng gửi dữ liệu một lúc (điều không bao giờ xảy ra), ta sắp xếp tất cả các mẫu đo theo trục thời gian tăng dần và xử lý theo từng sự kiện:
+
 ```python
 def run_fusion(meas, q, x0, P0, t0=0.0):
     kf = KalmanFilter(x0, P0)
     t_prev = t0
     log = []
     for ts, name, z, H, R in meas:
-        # Bước 1: Tính khoảng thời gian trôi qua từ lần cập nhật trước
+        # Bước 1: Tính khoảng thời gian trôi qua từ lần đo gần nhất
         dt = ts - t_prev
-        # Bước 2: Nếu thời gian đã trôi qua, dự phóng trạng thái đến thời điểm ts
+        # Bước 2: Nếu thời gian có trôi đi, chạy predict để đẩy mô hình tới mốc ts
         if dt > 0:
             kf.predict(make_F(dt), make_Q(dt, q))
-        # Bước 3: Cập nhật với đúng ma trận H và R của cảm biến vừa bắn tín hiệu
+        # Bước 3: Cập nhật đúng ma trận H và R của cảm biến vừa bắn dữ liệu về
         kf.update(z, H, R)
-        # Bước 4: Lưu mốc thời gian và ghi nhận log
+        # Bước 4: Cập nhật lại mốc thời gian và lưu vết
         t_prev = ts
         log.append((ts, kf.x.copy(), kf.P.copy()))
     return log
 ```
 
-#### 🗣️ Diễn giải nguyên lý vận hành:
-> Nếu hai cảm biến bắn tín hiệu cùng một thời điểm ($\Delta t = 0$), bộ lọc chỉ thực hiện `predict` một lần duy nhất, sau đó lần lượt gọi `update` cho từng cảm biến. Tính giao hoán của phân phối chuẩn bảo đảm: **Cập nhật cảm biến nào trước hay sau đều cho ra cùng một ước lượng tối ưu**.
+#### 🗣️ Diễn giải bằng lời:
+> Khi một cảm biến gửi số liệu tới, ta kiểm tra xem đã qua bao nhiêu giây. Nếu thời gian đã trôi qua ($\Delta t > 0$), ta chạy `predict` để đẩy mô hình đến đúng thời điểm đó, rồi chạy `update` bằng thông số riêng của cảm biến đó. Nếu hai cảm biến gửi dữ liệu cùng một tích tắc ($\Delta t = 0$), ta không cần predict lại mà update liên tiếp luôn. Nhờ tính chất của xác suất, cập nhật cảm biến nào trước hay sau đều cho ra cùng một kết quả tối ưu.
 
 ---
 
-## 7. LOẠI TRỪ DỮ LIỆU NGOẠI LAI BẰNG CỔNG KIỂM ĐỊNH CHI-BÌNH PHƯƠNG (PART 7)
+## 7. LỌC BỎ ĐIỂM ĐO BẤT THƯỜNG BẰNG CỔNG CHI-BÌNH PHƯƠNG (PART 7)
 
-### 7.1 Khoảng cách Mahalanobis & Cổng lọc Chi-Squared (Exercise 7.1)
-Khi sóng vô tuyến bị phản xạ đa đường (Multipath) hoặc cảm biến bị lóa sáng, số đo có thể nhảy vọt hàng chục mét (Outlier).
+### 7.1 Tại sao phải đặt cổng lọc (Outlier Gating)?
+Khi sóng GPS hoặc UWB bị dội vào tường nhà cao tầng hoặc kết cấu kim loại (hiện tượng phản xạ đa đường), số đo có thể nhảy vọt hàng chục mét. Nếu đưa số đo sai lệch nghiêm trọng này vào bộ lọc, xe sẽ bị giật lái đột ngột và gây tai nạn.
+
+Ta thiết lập một **Cổng lọc kiểm định Chi-bình phương (Exercise 7.1)**:
 
 $$d^2 = \mathbf{y}^T \mathbf{S}^{-1} \mathbf{y}$$
 
-$$\text{Điều kiện chấp nhận: } d^2 \le \gamma = \chi^2_{\text{ppf}}(p, k)$$
+$$\text{Quy tắc: Chấp nhận số đo nếu } d^2 \le \gamma = \chi^2_{\text{ppf}}(p, k)$$
 
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Tên gọi | Đơn vị | Ý nghĩa vật lý |
+#### 🔍 Chi tiết từng thành phần:
+| Ký hiệu | Tên gọi | Giá trị | Ý nghĩa thực tế |
 | :---: | :--- | :---: | :--- |
-| $d^2$ | Khoảng cách Mahalanobis bình phương | Không thứ nguyên | Đo lường độ xa thống kê giữa số đo thực tế và hình elip dung sai của bộ lọc. |
-| $p$ | Mức xác suất tin cậy (Gate probability) | Tỷ lệ (thường $0.99$) | Tỷ lệ phần trăm các phép đo hợp lệ được kỳ vọng nằm lọt vào trong cổng (ở đây là 99%). |
-| $k$ | Bậc tự do | Số nguyên ($k = \dim(\mathbf{z}) = 2$) | Số chiều của không gian đo lường. |
-| $\gamma$ | Ngưỡng cắt Chi-bình phương (Threshold) | Vô hướng ($9.21$ khi $p=0.99, k=2$) | Giá trị giới hạn tối đa của khoảng cách Mahalanobis. |
+| $d^2$ | Khoảng cách Mahalanobis bình phương | Số thực $\ge 0$ | Thước đo khoảng cách thống kê từ số đo thực tế đến hình elip tin cậy của bộ lọc. |
+| $p$ | Mức độ tin cậy của cổng | $0.99$ (99%) | Ta chấp nhận 99% các số đo bình thường nằm lọt vào cổng. |
+| $k$ | Bậc tự do | $2$ | Số chiều của phép đo (tọa độ 2D gồm $x$ và $y$). |
+| $\gamma$ | Ngưỡng cắt | $9.21$ | Giá trị tra bảng Chi-bình phương với $p=0.99, k=2$. |
 
 ```python
 def gated_update(kf, z, H, R, p=0.99):
     y = z - H @ kf.x
     S = H @ kf.P @ H.T + R
-    # Giải hệ phương trình S * x = y thay vì nghịch đảo ma trận
+    # Dùng np.linalg.solve thay vì nghịch đảo ma trận để tránh lỗi làm tròn số
     d2 = float(y.T @ np.linalg.solve(S, y))
-    # So sánh với ngưỡng phân vị Chi-bình phương
+    # So sánh khoảng cách d2 với ngưỡng chuẩn 9.21
     if d2 > chi2.ppf(p, df=len(z)):
-        return False   # Ngoại lai -> Loại bỏ, giữ nguyên trạng thái
+        return False   # Điểm đo bất thường -> Vứt bỏ, giữ nguyên trạng thái xe
     kf.update(z, H, R)
-    return True        # Hợp lệ -> Tiến hành cập nhật
+    return True        # Điểm đo hợp lệ -> Cập nhật bình thường
 ```
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Khoảng cách Mahalanobis bình phương $d^2$ được tính bằng dạng toàn phương của vector phần dư qua nghịch đảo ma trận hiệp phương sai phần dư. Nếu $d^2$ vượt quá giá trị phân vị $\chi^2$ tại mức $99\%$ với 2 bậc tự do ($d^2 > 9.21$), phép đo bị coi là dị biệt và bị loại bỏ ngay lập tức."*
+#### 🗣️ Phát biểu bằng lời:
+> *"Nếu khoảng cách thống kê bình phương $d^2$ giữa số đo thực tế và dự đoán vượt quá ngưỡng 9.21 (tức xác suất xảy ra ngẫu nhiên nhỏ hơn 1%), ta kết luận đây là số đo rác (outlier). Ta lập tức vứt bỏ điểm đo này và giữ nguyên trạng thái xe để tránh bị giật lệch quỹ đạo."*
 
 ---
 
-## 8. NHIỆM VỤ CHẨN ĐOÁN CẢM BIẾN XE TỰ HÀNH LYNX-07 (PART 9)
+## 8. NHIỆM VỤ THỰC TẾ: BẮT BỆNH CẢM BIẾN TRÊN XE LYNX-07 (PART 9)
 
-### 8.1 Dấu vân tay của 3 loại lỗi cảm biến (Fault Signatures)
+### 8.1 Dấu hiệu nhận biết 3 loại bệnh phổ biến của cảm biến
 
 ```
-[BỆNH 1: BIAS]             [BỆNH 2: UNDERRATED NOISE]     [BỆNH 3: OUTLIER BURST]
-- Mean residual LỆCH XA 0  - Mean residual GẦN 0          - Mean residual GẦN 0
-- NIS cao ĐỀU ĐẶN          - Cả Mean & Median NIS ĐỀU CAO - Mean NIS CAO, Median NIS BÌNH THƯỜNG
-- Cách sửa: Trừ vector bias - Cách sửa: Phóng đại R        - Cách sửa: Đặt cổng Gating
+[BỆNH 1: LỆCH GỐC - BIAS]        [BỆNH 2: KHAI BÁO NHIỄU QUÁ NHỎ]  [BỆNH 3: BÙNG PHÁT NGOẠI LAI - BURST]
+- Độ lệch trung bình LỆCH XA 0  - Độ lệch trung bình XẤP XỈ 0     - Độ lệch trung bình XẤP XỈ 0
+- NIS cao ĐỀU ĐẶN toàn hành trình - Cả Mean và Median NIS ĐỀU CAO   - Mean NIS RẤT CAO nhưng Median BÌNH THƯỜNG
+- Nguyên nhân: Lắp lệch vị trí  - Nguyên nhân: Thông số khai báo điêu - Nguyên nhân: Sóng bị che khuất tạm thời
+- Cách sửa: Trừ vector lệch     - Cách sửa: Nhân phóng to ma trận R - Cách sửa: Dùng cổng lọc Chi-bình phương
 ```
 
-### 8.2 Dữ liệu thực nghiệm của Học viên `2A202602467`
-Khởi tạo từ mã sinh viên `STUDENT_ID = "2A202602467"` (`seed = 3897423559`):
-- **Cảm biến GPS ($n = 450$):** $\text{mean(NIS)} = 2.88$, $\text{median(NIS)} = 1.40$, $\text{mean residual} = [-0.01, -0.02]\,\text{m}$ $\implies$ **Khỏe mạnh hoàn toàn**.
-- **Cảm biến UWB ($n = 900$):**
-  - $\text{mean(NIS)} = 12.69$ (bất thường rất lớn).
-  - $\text{median(NIS)} = 1.66$ (hoàn toàn bình thường trong hơn 90% thời gian).
-  - $\max(\text{NIS}) = 198.65$ (bùng nổ xung nhiễu cực mạnh từ $t = 53.84\,\text{s}$ đến $61.93\,\text{s}$).
-  - $\text{mean residual} = [0.07, 0.01]\,\text{m}$ (xấp xỉ 0 $\implies$ không có độ lệch bias hằng số).
-- **Chẩn đoán:** Cảm biến **`UWB`** bị lỗi **`outlier_burst`**.
+---
+
+### 8.2 Phân tích số liệu thực tế của Học viên `2A202602467`
+Từ mã học viên `STUDENT_ID = "2A202602467"` (hạt giống SHA-256 `seed = 3897423559`), ta thu được số liệu chẩn đoán ban đầu:
+- **Cảm biến GPS (450 mẫu đo):**
+  - $\text{mean(NIS)} = 2.88$, $\text{median(NIS)} = 1.40$, độ lệch trung bình = $[-0.01, -0.02]\,\text{m}$.
+  - Nhận xét: Số liệu hoàn toàn đẹp, tiệm cận giá trị kỳ vọng lý thuyết $\mathbb{E}[\text{NIS}] = 2.0$. Cảm biến GPS khỏe mạnh 100%.
+- **Cảm biến UWB (900 mẫu đo):**
+  - $\text{mean(NIS)} = 12.69$ (vọt lên rất cao bất thường).
+  - $\text{median(NIS)} = 1.66$ (trong hơn 90% thời gian, số đo hoàn toàn chuẩn xác).
+  - $\max(\text{NIS}) = 198.65$ (xuất hiện một đợt bùng nổ xung nhiễu dữ dội trong khoảng $t = 53.84\,\text{s}$ đến $61.93\,\text{s}$).
+  - Độ lệch trung bình = $[0.07, 0.01]\,\text{m}$ (gần như bằng 0 $\Rightarrow$ loại trừ khả năng bị lệch gốc `bias`).
+
+#### 🎯 Kết luận chẩn đoán:
+Cảm biến **`UWB`** bị lỗi **`outlier_burst`** (chùm xung nhiễu ngoại lai bùng phát tạm thời).
+
+---
 
 ### 8.3 Cấu hình sửa lỗi & Kết quả sau khắc phục:
 ```python
@@ -421,79 +417,95 @@ MY_DIAGNOSIS_TYPE   = "outlier_burst"
 FIX_SENSOR = "UWB"
 FIX_METHOD = "gate"
 ```
-- **Pooled Mean NIS sau sửa:** Giảm từ $9.42$ xuống **$1.98$** (đạt chuẩn vàng lý thuyết $\mathbb{E}[\text{NIS}] \approx 2.0$, thỏa mãn điều kiện $< 8.0$).
-- **Số phép đo hợp lệ được nhận:** $1267 / 1350$ (loại bỏ chính xác $83$ điểm nhiễu ngoại lai của UWB).
-- **Độ bất định vị trí $1\sigma$ cuối cùng:**
 
-$$\sigma_{\text{pos}} = \sqrt{P_{xx} + P_{yy}} = \sqrt{0.0673 + 0.0664} \approx \mathbf{0.366}\,\text{m}$$
+#### 📊 Kết quả thực nghiệm sau khi sửa:
+- **Chỉ số Pooled Mean NIS:** Giảm mạnh từ $9.42$ xuống còn **$1.98$** (đạt mức hoàn hảo, tiệm cận giá trị lý thuyết $2.0$ và vượt xa yêu cầu $< 8.0$).
+- **Số mẫu đo được chấp nhận:** $1267 / 1350$ mẫu (hệ thống đã loại bỏ chính xác $83$ mẫu ngoại lai nguy hiểm của UWB trong đợt bùng phát nhiễu).
+- **Độ bất định vị trí $1\sigma$ cuối hành trình:**
+
+$$\sigma_{\text{vị trí}} = \sqrt{P_{xx} + P_{yy}} = \sqrt{0.0673 + 0.0664} \approx \mathbf{0.366}\,\text{m}$$
 
 - **Bán kính tin cậy 95%:**
 
-$$R_{95\%} \approx 2 \cdot \sigma_{\text{pos}} \approx \mathbf{0.732}\,\text{m}$$
+$$R_{95\%} \approx 2 \cdot \sigma_{\text{vị trí}} \approx \mathbf{0.732}\,\text{m}$$
 
 ---
 
-## 9. BONUS NÂNG CAO: EXTENDED KALMAN FILTER (EKF - PART 8)
+### 8.4 Tại sao hai cách sửa kia (`bias` và `inflate_R`) lại sai?
+1. **Tại sao không dùng `bias`?**  
+   Độ lệch trung bình của UWB chỉ là $[0.07, 0.01]\,\text{m}$ (gần như bằng 0). Nếu ta tự tiện trừ đi một vector cố định, trong suốt 90 giây hoạt động bình thường còn lại, quỹ đạo của xe sẽ bị kéo lệch sai hoàn toàn so với thực tế.
+2. **Tại sao không dùng `inflate_R`?**  
+   Đợt nhiễu chỉ kéo dài cục bộ trong 8 giây. Nếu ta nhân phóng to ma trận sai số $\mathbf{R}$ cho toàn bộ hành trình, bộ lọc sẽ mất lòng tin vào UWB trong suốt cả chuyến đi, làm giảm độ chính xác bám đường ngay cả khi UWB đang chạy rất tốt.
+3. **Một tình huống mà cách sửa `gate` sẽ thất bại:**  
+   Khi xe bất ngờ bẻ lái cực gắt hoặc phanh cháy đường vượt quá khả năng dự đoán của mô hình vật lý, vị trí dự đoán sẽ bị trễ so với thực tế. Lúc này, dù cảm biến đo đúng nhưng độ lệch $y$ lại rất lớn, khiến bộ lọc hiểu nhầm là số đo rác và loại bỏ liên tiếp. Xe sẽ mất phương hướng hoàn toàn (hiện tượng phân kỳ bộ lọc).
 
-### 9.1 Mô hình đo phi tuyến Range-Bearing (Radar / Trạm mặt đất)
-Cảm biến Radar đặt tại mốc cố định $\mathbf{s} = [s_x, s_y]^T$ đo cự ly $r$ và góc phương vị $\theta$:
+---
+
+## 9. MỞ RỘNG CHO CẢM BIẾN PHI TUYẾN: BỘ LỌC EKF (PART 8 BONUS)
+
+### 9.1 Khi cảm biến đo cự ly và góc thay vì tọa độ Descartes
+Radar hoặc Camera đặt tại trạm quan sát $\mathbf{s} = [s_x, s_y]^T$ đo khoảng cách $r$ và góc phương vị $\theta$:
 
 $$\mathbf{z} = \begin{bmatrix} r \\ \theta \end{bmatrix} = h(\mathbf{x}, \mathbf{s}) + \mathbf{v}$$
 
 $$h(\mathbf{x}, \mathbf{s}) = \begin{bmatrix} \sqrt{(x - s_x)^2 + (y - s_y)^2} \\ \operatorname{atan2}(y - s_y, x - s_x) \end{bmatrix}$$
 
-#### 🔍 Giải phẫu thành phần:
-| Thành phần | Đơn vị | Ý nghĩa |
-| :---: | :---: | :--- |
-| $dx = x - s_x$ | $\text{m}$ | Khoảng cách theo phương $x$ từ trạm radar đến xe. |
-| $dy = y - s_y$ | $\text{m}$ | Khoảng cách theo phương $y$ từ trạm radar đến xe. |
-| $r = \sqrt{dx^2 + dy^2}$ | $\text{m}$ | Cự ly xuyên tâm (Range / Euclidian distance). |
-| $\theta = \operatorname{atan2}(dy, dx)$ | $\text{rad}$ | Góc phương vị (Bearing angle) trong hệ tọa độ cực. |
+Vì hàm số $h(\mathbf{x})$ chứa căn bậc hai và hàm lượng giác $\text{atan2}$ (phi tuyến tính), ta không thể dùng ma trận tuyến tính $\mathbf{H}$ thông thường mà phải dùng **ma trận Jacobian $\mathbf{H}_{\text{rb}}$** để xấp xỉ tuyến tính tại điểm xe đang đứng.
 
 ---
 
-### 9.2 Tuyến tính hóa Taylor bậc 1 & Ma trận Jacobian $\mathbf{H}_{\text{rb}}$ (Exercise 8.1)
-Do hàm $h(\mathbf{x})$ phi tuyến, ma trận quan sát $\mathbf{H}$ được thay bằng ma trận đạo hàm riêng Jacobian tính tại điểm ước lượng $\mathbf{x}^-$:
+### 9.2 Ma trận đạo hàm riêng Jacobian $\mathbf{H}_{\text{rb}}$ (Exercise 8.1)
+Đặt $dx = x - s_x$, $dy = y - s_y$, khoảng cách $r = \sqrt{dx^2 + dy^2}$:
 
-$$\mathbf{H}_{\text{rb}} = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\mathbf{x}^-} = \begin{bmatrix} \frac{\partial r}{\partial x} & \frac{\partial r}{\partial y} & \frac{\partial r}{\partial v_x} & \frac{\partial r}{\partial v_y} \\ \frac{\partial \theta}{\partial x} & \frac{\partial \theta}{\partial y} & \frac{\partial \theta}{\partial v_x} & \frac{\partial \theta}{\partial v_y} \end{bmatrix} = \begin{bmatrix} \frac{dx}{r} & \frac{dy}{r} & 0 & 0 \\ -\frac{dy}{r^2} & \frac{dx}{r^2} & 0 & 0 \end{bmatrix}$$
+$$\mathbf{H}_{\text{rb}} = \begin{bmatrix} \frac{\partial r}{\partial x} & \frac{\partial r}{\partial y} & 0 & 0 \\ \frac{\partial \theta}{\partial x} & \frac{\partial \theta}{\partial y} & 0 & 0 \end{bmatrix} = \begin{bmatrix} \frac{dx}{r} & \frac{dy}{r} & 0 & 0 \\ -\frac{dy}{r^2} & \frac{dx}{r^2} & 0 & 0 \end{bmatrix}$$
 
-#### 🔍 Giải phẫu từng đạo hàm riêng:
-- $\frac{\partial r}{\partial x} = \frac{dx}{\sqrt{dx^2 + dy^2}} = \frac{dx}{r} = \cos\theta$: Tốc độ thay đổi cự ly theo vị trí $x$.
-- $\frac{\partial r}{\partial y} = \frac{dy}{r} = \sin\theta$: Tốc độ thay đổi cự ly theo vị trí $y$.
-- $\frac{\partial \theta}{\partial x} = \frac{-dy}{dx^2 + dy^2} = -\frac{dy}{r^2}$: Tốc độ thay đổi góc phương vị theo vị trí $x$.
-- $\frac{\partial \theta}{\partial y} = \frac{dx}{r^2}$: Tốc độ thay đổi góc phương vị theo vị trí $y$.
-- Các cột vận tốc bằng 0 vì radar chỉ đo đạc tọa độ vị trí.
+```python
+def h_rb(x, s):
+    dx, dy = x[0] - s[0], x[1] - s[1]
+    return np.array([np.hypot(dx, dy), np.arctan2(dy, dx)])
 
-#### 🗣️ Cách phát biểu & Diễn giải bằng lời:
-> **Cách đọc:** *"Ma trận Jacobian $\mathbf{H}_{\text{rb}}$ kích thước $2\times 4$ gồm hàng 1 là đạo hàm của cự ly $(dx/r, dy/r, 0, 0)$ và hàng 2 là đạo hàm của góc phương vị $(-dy/r^2, dx/r^2, 0, 0)$."*  
-> **Xử lý quay vòng góc (Angle Wrapping):** Sai số góc $y_\theta = z_\theta - \hat{\theta}$ phải luôn được chuẩn hóa về $[-\pi, \pi]$ bằng công thức:  
-> $$y_\theta = (y_\theta + \pi) \pmod{2\pi} - \pi$$  
-> nhằm tránh việc sai số $2^\circ$ bị hiểu nhầm thành $358^\circ$ tại ranh giới nhảy pha.
+def H_rb(x, s):
+    dx, dy = x[0] - s[0], x[1] - s[1]
+    r2 = dx**2 + dy**2
+    r = np.sqrt(r2)
+    H = np.zeros((2, 4))
+    H[0, 0] = dx / r
+    H[0, 1] = dy / r
+    H[1, 0] = -dy / r2
+    H[1, 1] = dx / r2
+    return H
+```
+
+#### 💡 Lưu ý sống còn: Hiện tượng nhảy pha góc (Angle Wrapping)
+Góc phương vị nằm trong khoảng $[-\pi, \pi]$. Nếu xe đi từ $-179^\circ$ sang $+179^\circ$, độ lệch hình học thực tế chỉ là $2^\circ$, nhưng phép trừ số học thông thường cho ra:
+$$-179^\circ - (+179^\circ) = -358^\circ$$
+Nếu đưa con số $-358^\circ$ này vào bộ lọc, xe sẽ bị giật lái vòng tròn! Ta bắt buộc phải chuẩn hóa góc về khoảng $[-\pi, \pi]$:
+
+$$y_\theta = (y_\theta + \pi) \pmod{2\pi} - \pi$$
 
 ---
 
-## 10. PLAYBOOK TRIỂN KHAI THỰC TẾ TRONG XE TỰ HÀNH & ROBOT CÔNG NGHIỆP
+## 10. KINH NGHIỆM THỰC TẾ KHI TRIỂN KHAI CHO XE TỰ HÀNH & ROBOT
 
-### 10.1 Đảm bảo ổn định số học qua dạng Joseph (Joseph Form Covariance)
-Trong tính toán số học dấu phẩy động hữu hạn, phép trừ ma trận $\mathbf{P} = (\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}^-$ có thể làm mất tính đối xứng hoặc khiến các giá trị riêng trên đường chéo trở thành số âm, dẫn tới sụp đổ bộ lọc (Filter Divergence).
+### 10.1 Tránh lỗi sập bộ lọc do sai số làm tròn số học (Dạng Joseph)
+Trong máy tính, các phép trừ số thực $\mathbf{P} = (\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}^-$ có thể làm cho ma trận $\mathbf{P}$ bị mất tính đối xứng hoặc xuất hiện phương sai âm trên đường chéo, khiến chương trình bị dừng đột ngột.
 
-Dạng Joseph chuẩn bảo đảm ma trận luôn luôn đối xứng và xác định dương trong mọi hoàn cảnh:
+Để khắc phục, trong các hệ thống xe tự hành thực tế, người ta áp dụng công thức **Dạng Joseph (Joseph Form)**:
 
 $$\mathbf{P} = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}^- (\mathbf{I} - \mathbf{K} \mathbf{H})^T + \mathbf{K} \mathbf{R} \mathbf{K}^T$$
 
-#### 🔍 Giải phẫu thành phần:
-- Thành phần 1: $(\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}^-(\mathbf{I} - \mathbf{K}\mathbf{H})^T$ có cấu trúc $A P^- A^T$ luôn bán xác định dương.
-- Thành phần 2: $\mathbf{K}\mathbf{R}\mathbf{K}^T$ phản ánh lượng nhiễu cảm biến được đưa vào, luôn xác định dương khi $\mathbf{R} > 0$.
-- **Thực hành công nghiệp:** Sau mỗi bước cập nhật, luôn cưỡng bức đối xứng:
-  $$\mathbf{P} \leftarrow \frac{\mathbf{P} + \mathbf{P}^T}{2}$$
+Và luôn cưỡng bức đối xứng sau mỗi chu kỳ:
+```python
+P = 0.5 * (P + P.T)
+```
 
 ---
 
-### 10.2 Bù trễ dữ liệu đo đến muộn (Out-of-Sequence Measurements - OOSM)
-Trong hệ thống mạng CAN-bus hoặc ROS2, tín hiệu camera và GPS thường bị trễ thời gian $\tau$ so với tín hiệu IMU:
-1. **Chiến lược Ring-Buffer & Replay:** Lưu lịch sử các trạng thái ước lượng trong một hàng đợi vòng tròn độ dài $\tau_{\max}$. Khi gói tin trễ thời điểm $t - \tau$ cập bến, bộ lọc quay ngược thời gian về mốc đó, chèn phép đo vào bước cập nhật, sau đó chạy lại (fast-forward replay) các bước `predict` và `update` đến thời điểm hiện tại.
-2. **Chiến lược Cổng Gating thích ứng:** Tăng ngưỡng cổng $d^2$ theo hàm số của khoảng thời gian trễ $\tau$ để tránh việc dự đoán bị trôi làm loại bỏ nhầm các phép đo chính xác.
+### 10.2 Xử lý dữ liệu cảm biến bị trễ (Out-of-Sequence Measurements)
+Trong thực tế, dữ liệu từ Camera xử lý AI thường mất $50\,\text{ms}$ mới ra kết quả, trong khi IMU gửi dữ liệu tức thì:
+- **Giải pháp bộ đệm quay ngược thời gian (Ring Buffer & Replay):** Máy tính lưu lại lịch sử ước lượng trong khoảng 1 giây gần nhất. Khi gói tin camera gửi về ghi nhãn thời gian $t - 50\,\text{ms}$, hệ thống quay ngược trạng thái về mốc đó, chèn phép đo camera vào để cập nhật, rồi tính toán nhanh lại các bước tiếp theo cho tới hiện tại.
 
 ---
 
-*Tài liệu thuộc khuôn khổ chương trình đào tạo K4 Track 4 — AI20K. Hoàn thành và nghiệm thu bởi Lâm Quang Anh Quân (MSSV: `2A202602467`).*
+*Tài liệu hoàn thành theo chuẩn học thuật và kỹ thuật của chương trình đào tạo K4 Track 4 — AI20K.*  
+*Học viên: Lâm Quang Anh Quân (MSSV: `2A202602467`).*
